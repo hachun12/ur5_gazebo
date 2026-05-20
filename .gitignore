@@ -1,0 +1,12 @@
+build/
+install/
+log/
+reference/
+src/ros2_robotiq_gripper/
+.agents/
+.codex/
+scene/
+
+*.pyc
+__pycache__/
+.DS_Store

@@ -1,0 +1,216 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="ur5">
+  <xacro:arg name="use_ros2_control" default="false"/>
+  <xacro:arg name="ros2_control_hardware_plugin" default="mock_components/GenericSystem"/>
+  <xacro:arg name="ros2_control_parameters" default=""/>
+  <xacro:arg name="mesh_prefix" default="package://ur5_description"/>
+  <xacro:arg name="use_fixed_world_joint" default="false"/>
+  <xacro:arg name="include_gripper" default="false"/>
+  <xacro:arg name="gripper_prefix" default=""/>
+  <xacro:arg name="gripper_mesh_prefix" default="package://ur5_description/meshes/robotiq_2f85_ifra"/>
+
+  <material name="ur_blue">
+    <color rgba="0.1 0.32 0.62 1.0"/>
+  </material>
+  <material name="ur_light">
+    <color rgba="0.82 0.86 0.88 1.0"/>
+  </material>
+  <material name="ur_dark">
+    <color rgba="0.08 0.09 0.10 1.0"/>
+  </material>
+
+  <xacro:macro name="simple_inertial" params="mass">
+    <inertial>
+      <mass value="${mass}"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <inertia ixx="0.01" ixy="0" ixz="0" iyy="0.01" iyz="0" izz="0.01"/>
+    </inertial>
+  </xacro:macro>
+
+  <xacro:macro name="joint_limit">
+    <limit lower="-${2*pi}" upper="${2*pi}" effort="150.0" velocity="3.15"/>
+  </xacro:macro>
+
+  <xacro:macro name="mesh_visual" params="mesh xyz:='0 0 0' rpy:='0 0 0'">
+    <visual>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+      <geometry>
+        <mesh filename="$(arg mesh_prefix)/meshes/visual/${mesh}.dae"/>
+      </geometry>
+    </visual>
+  </xacro:macro>
+
+  <xacro:macro name="mesh_collision" params="mesh xyz:='0 0 0' rpy:='0 0 0'">
+    <collision>
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+      <geometry>
+        <mesh filename="$(arg mesh_prefix)/meshes/collision/${mesh}.stl"/>
+      </geometry>
+    </collision>
+  </xacro:macro>
+
+  <link name="base_link"/>
+
+  <xacro:if value="$(arg use_fixed_world_joint)">
+    <link name="world"/>
+    <joint name="world-base_link" type="fixed">
+      <parent link="world"/>
+      <child link="base_link"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+  </xacro:if>
+
+  <link name="base_link_inertia">
+    <xacro:mesh_visual mesh="base" rpy="0 0 ${pi}"/>
+    <xacro:mesh_collision mesh="base" rpy="0 0 ${pi}"/>
+    <xacro:simple_inertial mass="4.0"/>
+  </link>
+
+  <link name="shoulder_link">
+    <xacro:mesh_visual mesh="shoulder" rpy="0 0 ${pi}"/>
+    <xacro:mesh_collision mesh="shoulder" rpy="0 0 ${pi}"/>
+    <xacro:simple_inertial mass="3.7"/>
+  </link>
+
+  <link name="upper_arm_link">
+    <xacro:mesh_visual mesh="upperarm" xyz="0 0 0.13585" rpy="${pi/2} 0 ${-pi/2}"/>
+    <xacro:mesh_collision mesh="upperarm" xyz="0 0 0.13585" rpy="${pi/2} 0 ${-pi/2}"/>
+    <xacro:simple_inertial mass="8.4"/>
+  </link>
+
+  <link name="forearm_link">
+    <xacro:mesh_visual mesh="forearm" xyz="0 0 0.0165" rpy="${pi/2} 0 ${-pi/2}"/>
+    <xacro:mesh_collision mesh="forearm" xyz="0 0 0.0165" rpy="${pi/2} 0 ${-pi/2}"/>
+    <xacro:simple_inertial mass="2.3"/>
+  </link>
+
+  <link name="wrist_1_link">
+    <xacro:mesh_visual mesh="wrist1" xyz="0 0 -0.093" rpy="${pi/2} 0 0"/>
+    <xacro:mesh_collision mesh="wrist1" xyz="0 0 -0.093" rpy="${pi/2} 0 0"/>
+    <xacro:simple_inertial mass="1.2"/>
+  </link>
+
+  <link name="wrist_2_link">
+    <xacro:mesh_visual mesh="wrist2" xyz="0 0 -0.095"/>
+    <xacro:mesh_collision mesh="wrist2" xyz="0 0 -0.095"/>
+    <xacro:simple_inertial mass="1.2"/>
+  </link>
+
+  <link name="wrist_3_link">
+    <xacro:mesh_visual mesh="wrist3" xyz="0 0 -0.0818" rpy="${pi/2} 0 0"/>
+    <xacro:mesh_collision mesh="wrist3" xyz="0 0 -0.0818" rpy="${pi/2} 0 0"/>
+    <xacro:simple_inertial mass="0.2"/>
+  </link>
+
+  <joint name="base_link-base_link_inertia" type="fixed">
+    <parent link="base_link"/>
+    <child link="base_link_inertia"/>
+    <origin xyz="0 0 0" rpy="0 0 ${pi}"/>
+  </joint>
+
+  <joint name="shoulder_pan_joint" type="revolute">
+    <parent link="base_link_inertia"/>
+    <child link="shoulder_link"/>
+    <origin xyz="0 0 0.089159" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <xacro:joint_limit/>
+  </joint>
+
+  <joint name="shoulder_lift_joint" type="revolute">
+    <parent link="shoulder_link"/>
+    <child link="upper_arm_link"/>
+    <origin xyz="0 0 0" rpy="${pi/2} 0 0"/>
+    <axis xyz="0 0 1"/>
+    <xacro:joint_limit/>
+  </joint>
+
+  <joint name="elbow_joint" type="revolute">
+    <parent link="upper_arm_link"/>
+    <child link="forearm_link"/>
+    <origin xyz="-0.425 0 0" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <xacro:joint_limit/>
+  </joint>
+
+  <joint name="wrist_1_joint" type="revolute">
+    <parent link="forearm_link"/>
+    <child link="wrist_1_link"/>
+    <origin xyz="-0.39225 0 0.10915" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <xacro:joint_limit/>
+  </joint>
+
+  <joint name="wrist_2_joint" type="revolute">
+    <parent link="wrist_1_link"/>
+    <child link="wrist_2_link"/>
+    <origin xyz="0 -0.09465 0" rpy="${pi/2} 0 0"/>
+    <axis xyz="0 0 1"/>
+    <xacro:joint_limit/>
+  </joint>
+
+  <joint name="wrist_3_joint" type="revolute">
+    <parent link="wrist_2_link"/>
+    <child link="wrist_3_link"/>
+    <origin xyz="0 0.0823 0" rpy="${pi/2} ${pi} ${pi}"/>
+    <axis xyz="0 0 1"/>
+    <xacro:joint_limit/>
+  </joint>
+
+  <link name="base"/>
+  <joint name="base_link-base_fixed_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="base"/>
+    <origin xyz="0 0 0" rpy="0 0 ${pi}"/>
+  </joint>
+
+  <link name="flange"/>
+  <joint name="wrist_3-flange" type="fixed">
+    <parent link="wrist_3_link"/>
+    <child link="flange"/>
+    <origin xyz="0 0 0" rpy="0 ${-pi/2} ${-pi/2}"/>
+  </joint>
+
+  <link name="tool0"/>
+  <joint name="flange-tool0" type="fixed">
+    <parent link="flange"/>
+    <child link="tool0"/>
+    <origin xyz="0 0 0" rpy="${pi/2} 0 ${pi/2}"/>
+  </joint>
+
+  <xacro:if value="$(arg include_gripper)">
+    <xacro:include filename="$(find ur5_description)/urdf/ifra_robotiq_2f85_macro.urdf.xacro"/>
+    <xacro:robotiq_2f85
+      bringup="true"
+      parent_link="tool0"
+      prefix="$(arg gripper_prefix)"
+      mesh_prefix="$(arg gripper_mesh_prefix)"/>
+
+    <link name="$(arg gripper_prefix)gripper_tcp"/>
+    <joint name="$(arg gripper_prefix)EE_robotiq_2f85-gripper_tcp" type="fixed">
+      <parent link="$(arg gripper_prefix)EE_robotiq_2f85"/>
+      <child link="$(arg gripper_prefix)gripper_tcp"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+  </xacro:if>
+
+  <xacro:if value="$(arg use_ros2_control)">
+    <xacro:include filename="$(find ur5_description)/urdf/ur5_ros2_control.xacro"/>
+    <xacro:ur5_ros2_control
+      name="UR5System"
+      hardware_plugin="$(arg ros2_control_hardware_plugin)"
+      include_gripper="$(arg include_gripper)"
+      gripper_prefix="$(arg gripper_prefix)"/>
+  </xacro:if>
+
+  <xacro:if value="$(arg use_ros2_control)">
+    <xacro:if value="${'$(arg ros2_control_parameters)' != ''}">
+      <gazebo>
+        <plugin filename="libgazebo_ros2_control.so" name="gazebo_ros2_control">
+          <robot_param>robot_description</robot_param>
+          <robot_param_node>robot_state_publisher</robot_param_node>
+          <parameters>$(arg ros2_control_parameters)</parameters>
+        </plugin>
+      </gazebo>
+    </xacro:if>
+  </xacro:if>
+</robot>

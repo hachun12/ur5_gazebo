@@ -1,0 +1,32 @@
+skill_id: pick
+description: Segmented MVP pick using MoveIt pose goals, gripper control, and Gazebo sim attachment.
+category: composite
+parameters:
+  object:
+    type: string
+    required: true
+preconditions:
+  - object_exists
+  - move_group_running
+  - object_reachable
+effects:
+  - object_attached_to_gripper_tcp
+  - object_lifted
+motion_requirements:
+  planner: seeded_ik_ompl_then_cartesian_segments_mvp
+ros_interfaces:
+  actions:
+    - /move_action
+    - /execute_trajectory
+    - /robotiq_gripper_controller/follow_joint_trajectory
+  services:
+    - /gazebo/get_entity_state
+    - /compute_ik
+    - /compute_cartesian_path
+    - /sim_grasp_adapter/attach_target
+failure_modes:
+  - move_group_unavailable
+  - planning_failed
+  - gripper_command_failed
+  - attach_failed
+recovery_policy: detach_if_attached_then_stop

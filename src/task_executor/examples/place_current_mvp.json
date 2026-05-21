@@ -1,0 +1,21 @@
+{
+  "task_id": "manual_place_current_mvp",
+  "user_command": "place currently attached object at current gripper pose",
+  "plan": [
+    {
+      "step": 1,
+      "skill": "place",
+      "args": {}
+    },
+    {
+      "step": 2,
+      "skill": "open_gripper",
+      "args": {}
+    },
+    {
+      "step": 3,
+      "skill": "observe_scene",
+      "args": {}
+    }
+  ]
+}

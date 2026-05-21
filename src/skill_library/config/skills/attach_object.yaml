@@ -1,0 +1,21 @@
+skill_id: attach_object
+description: Gazebo-only attachment of an object to gripper_tcp.
+category: simulation_adapter
+parameters:
+  object:
+    type: string
+    required: true
+preconditions:
+  - object_exists
+  - object_near_gripper_tcp
+effects:
+  - object_attached_to_gripper_tcp
+motion_requirements: []
+ros_interfaces:
+  services:
+    - /sim_grasp_adapter/attach_target
+    - /sim_grasp_adapter/set_parameters
+failure_modes:
+  - object_too_far
+  - sim_grasp_adapter_unavailable
+recovery_policy: move_gripper_near_object_then_retry

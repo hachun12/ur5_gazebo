@@ -1,0 +1,23 @@
+skill_id: place
+description: MVP place by detaching the currently attached object at the current gripper pose.
+category: composite
+parameters:
+  object:
+    type: string
+    required: false
+  target:
+    type: object
+    required: false
+preconditions:
+  - object_attached_to_gripper_tcp
+effects:
+  - object_detached
+motion_requirements:
+  planner: external_moveit_or_manual_mvp
+ros_interfaces:
+  services:
+    - /sim_grasp_adapter/detach
+failure_modes:
+  - no_object_attached
+  - sim_grasp_adapter_unavailable
+recovery_policy: stop_and_report_failure

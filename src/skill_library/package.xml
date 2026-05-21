@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>skill_library</name>
+  <version>0.1.0</version>
+  <description>Structured skill registry for the UR5 tabletop LLM-TAMP workflow.</description>
+  <maintainer email="user@example.com">UR5 Sim Developer</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

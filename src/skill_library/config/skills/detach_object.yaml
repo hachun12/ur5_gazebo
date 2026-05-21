@@ -1,0 +1,15 @@
+skill_id: detach_object
+description: Gazebo-only detachment of the currently attached object.
+category: simulation_adapter
+parameters: {}
+preconditions:
+  - sim_grasp_adapter_running
+effects:
+  - no_object_attached
+motion_requirements: []
+ros_interfaces:
+  services:
+    - /sim_grasp_adapter/detach
+failure_modes:
+  - sim_grasp_adapter_unavailable
+recovery_policy: stop_and_report_failure

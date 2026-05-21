@@ -1,0 +1,21 @@
+skill_id: close_gripper
+description: Close the Robotiq 2F-85 gripper in simulation.
+category: manipulation
+parameters:
+  position:
+    type: number
+    required: false
+preconditions:
+  - robotiq_gripper_controller_active
+effects:
+  - gripper_closed
+motion_requirements:
+  planner: direct_joint_trajectory
+ros_interfaces:
+  actions:
+    - /robotiq_gripper_controller/follow_joint_trajectory
+failure_modes:
+  - gripper_controller_unavailable
+  - gripper_goal_rejected
+  - gripper_goal_aborted
+recovery_policy: stop_and_report_failure

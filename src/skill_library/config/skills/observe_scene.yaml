@@ -1,0 +1,14 @@
+skill_id: observe_scene
+description: Read the current tabletop world state.
+category: sensing
+parameters: {}
+preconditions: []
+effects:
+  - updates_world_state
+motion_requirements: []
+ros_interfaces:
+  services:
+    - /gazebo/get_entity_state
+failure_modes:
+  - gazebo_state_service_unavailable
+recovery_policy: retry_after_sim_ready

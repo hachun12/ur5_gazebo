@@ -1,0 +1,18 @@
+skill_id: move_ready
+description: Move the UR5 arm to the known ready joint configuration.
+category: motion
+parameters: {}
+preconditions:
+  - ur5_arm_controller_active
+effects:
+  - arm_at_ready_pose
+motion_requirements:
+  planner: direct_joint_trajectory
+ros_interfaces:
+  actions:
+    - /ur5_arm_controller/follow_joint_trajectory
+failure_modes:
+  - arm_controller_unavailable
+  - trajectory_rejected
+  - trajectory_aborted
+recovery_policy: stop_and_report_failure

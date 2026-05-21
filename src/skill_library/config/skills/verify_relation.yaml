@@ -1,0 +1,26 @@
+skill_id: verify_relation
+description: Verify a spatial relation from Gazebo ground-truth poses.
+category: verification
+parameters:
+  relation:
+    type: string
+    required: true
+    enum: [on, left_of, right_of, in_front_of, behind]
+  object_a:
+    type: string
+    required: true
+  object_b:
+    type: string
+    required: true
+preconditions:
+  - objects_exist
+effects:
+  - relation_verified_or_failed
+motion_requirements: []
+ros_interfaces:
+  services:
+    - /gazebo/get_entity_state
+failure_modes:
+  - object_missing
+  - relation_false
+recovery_policy: report_failure

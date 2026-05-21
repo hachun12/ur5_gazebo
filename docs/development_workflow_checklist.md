@@ -857,27 +857,47 @@ notes
 
 完成條件：
 
-- [ ] table + 三色方塊 + 球可 spawn。
+- [x] table + 三色方塊 + 球可 spawn。
 - [ ] 物理穩定。
-- [ ] ground truth world state 正常。
+- [x] ground truth world state 查詢工具：`ros2 run ur5_gazebo print_world_state.py`。
+- [x] 文件化 M3 場景與 world-state schema：`docs/m3_tabletop_objects_world_state.md`。
+- [x] 新增 Gazebo 專用 sim grasp adapter，可 attach/detach 物件到 `gripper_tcp`。
 
 ### M4：MoveIt2 控制 Gazebo
 
 完成條件：
 
+- [x] 新增 `ur5_moveit_config` package。
+- [x] `move_group` 可載入 UR5 + 2F-85 robot model。
+- [x] MoveIt controller mapping 指到 `/ur5_arm_controller/follow_joint_trajectory`。
 - [ ] RViz 規劃成功。
 - [ ] execute 可驅動 Gazebo。
 - [ ] planning scene 有 table/object。
+- [x] 文件化 MoveIt2/RViz 啟動與操作：`docs/m4_moveit2_rviz_control.md`。
 
 ### M5：Skill executor MVP
 
 完成條件：
 
-- [ ] `pick`
-- [ ] `place`
+- [x] 新增 `skill_library` package 與固定 YAML skill registry。
+- [x] 新增 `task_executor` package 與 JSON plan validator/executor CLI。
+- [x] `observe_scene`
+- [x] `move_ready`
+- [x] `open_gripper`
+- [x] `close_gripper`
+- [x] `attach_object`
+- [x] `detach_object`
+- [x] `move_above_object`：讀 Gazebo object pose，呼叫 MoveIt `/move_action` 到物件上方。
+- [x] `move_to_object`：分段下探到物件附近。
+- [x] `lift`：相對目前 TCP 往上抬升。
+- [x] `move_to_region`：移動到命名桌面區域，支援 left/center/right/front。
+- [x] `pick` MVP：自動 open、move_above、move_to、close、attach、lift。
+- [x] `place` MVP：假設 TCP 已在放置點，執行 detach/open。
 - [ ] `stack`
 - [ ] `push`
-- [ ] verify skills
+- [x] verify skills：`verify_relation`、`verify_region` 初版。
+- [x] 文件化 M5：`docs/m5_skill_executor_mvp.md`。
+- [x] 文件化 MoveIt pose-goal、RViz marker IK branch、seeded IK + joint-space OMPL、Cartesian approach/retreat 的差異與處理方式：`docs/m5_motion_planning_notes.md`。
 
 ### M6：本地端 LLM plan
 

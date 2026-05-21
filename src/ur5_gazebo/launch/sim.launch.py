@@ -1,5 +1,6 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, RegisterEventHandler, TimerAction
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, RegisterEventHandler, SetEnvironmentVariable, TimerAction
+from launch.conditions import IfCondition
 from launch.event_handlers import OnProcessExit
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import Command, LaunchConfiguration, PathJoinSubstitution
@@ -11,6 +12,8 @@ from launch_ros.substitutions import FindPackageShare
 def generate_launch_description():
     use_sim_time = LaunchConfiguration("use_sim_time")
     world = LaunchConfiguration("world")
+    gui = LaunchConfiguration("gui")
+    software_rendering = LaunchConfiguration("software_rendering")
 
     robot_xacro = PathJoinSubstitution([
         FindPackageShare("ur5_description"),
@@ -69,6 +72,10 @@ def generate_launch_description():
         launch_arguments={
             "world": world,
             "verbose": "true",
+            "gui": gui,
+            "init": "true",
+            "factory": "true",
+            "force_system": "true",
         }.items(),
     )
 
@@ -93,6 +100,8 @@ def generate_launch_description():
             "0.0",
             "-z",
             "0.0",
+            "-timeout",
+            "120",
         ],
         output="screen",
     )
@@ -136,8 +145,22 @@ def generate_launch_description():
         output="screen",
     )
 
+    sim_grasp_adapter = Node(
+        package="ur5_gazebo",
+        executable="sim_grasp_adapter.py",
+        parameters=[{
+            "use_sim_time": use_sim_time,
+            "target_object": "red_block",
+            "world_frame": "world",
+            "tcp_frame": "gripper_tcp",
+        }],
+        output="screen",
+    )
+
     return LaunchDescription([
         DeclareLaunchArgument("use_sim_time", default_value="true"),
+        DeclareLaunchArgument("gui", default_value="true"),
+        DeclareLaunchArgument("software_rendering", default_value="false"),
         DeclareLaunchArgument(
             "world",
             default_value=PathJoinSubstitution([
@@ -146,8 +169,19 @@ def generate_launch_description():
                 "empty_workcell.world",
             ]),
         ),
+        SetEnvironmentVariable(
+            name="LIBGL_ALWAYS_SOFTWARE",
+            value="1",
+            condition=IfCondition(software_rendering),
+        ),
+        SetEnvironmentVariable(
+            name="QT_XCB_GL_INTEGRATION",
+            value="none",
+            condition=IfCondition(software_rendering),
+        ),
         gazebo,
         robot_state_publisher,
+        sim_grasp_adapter,
         spawn_robot,
         RegisterEventHandler(
             OnProcessExit(

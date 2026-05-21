@@ -1,0 +1,23 @@
+{
+  "task_id": "manual_pick_blue_mvp",
+  "user_command": "pick blue block from current gripper pose",
+  "plan": [
+    {
+      "step": 1,
+      "skill": "open_gripper",
+      "args": {}
+    },
+    {
+      "step": 2,
+      "skill": "pick",
+      "args": {
+        "object": "blue_block"
+      }
+    },
+    {
+      "step": 3,
+      "skill": "observe_scene",
+      "args": {}
+    }
+  ]
+}

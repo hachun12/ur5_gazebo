@@ -11,6 +11,10 @@ install(PROGRAMS
   scripts/render_urdf.py
   scripts/send_ready_trajectory.py
   scripts/send_gripper_open_close.py
+  scripts/print_world_state.py
+  scripts/sim_grasp_adapter.py
+  scripts/grasp_target.py
+  scripts/check_moveit_start_state.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

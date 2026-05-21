@@ -1,0 +1,23 @@
+skill_id: lift
+description: Lift gripper_tcp vertically by a relative height using a MoveIt Cartesian segment.
+category: motion
+parameters:
+  height:
+    type: number
+    required: false
+preconditions:
+  - move_group_running
+effects:
+  - gripper_tcp_lifted
+motion_requirements:
+  planner: moveit_cartesian_path
+ros_interfaces:
+  services:
+    - /compute_cartesian_path
+  actions:
+    - /execute_trajectory
+failure_modes:
+  - move_group_unavailable
+  - planning_failed
+  - execution_failed
+recovery_policy: stop_and_report_failure

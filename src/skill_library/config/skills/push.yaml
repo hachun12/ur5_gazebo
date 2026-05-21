@@ -1,0 +1,27 @@
+skill_id: push
+description: Push an object along a tabletop direction. Not implemented in the first executor.
+category: manipulation
+parameters:
+  object:
+    type: string
+    required: true
+  direction:
+    type: string
+    required: true
+    enum: [left, right, forward, backward]
+  distance:
+    type: number
+    required: true
+preconditions:
+  - object_exists
+  - object_pushable
+effects:
+  - object_displaced
+motion_requirements:
+  planner: moveit_cartesian_path
+ros_interfaces:
+  actions:
+    - /move_action
+failure_modes:
+  - not_implemented
+recovery_policy: report_not_implemented

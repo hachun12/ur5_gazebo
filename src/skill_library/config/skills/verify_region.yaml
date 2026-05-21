@@ -1,0 +1,23 @@
+skill_id: verify_region
+description: Verify that an object is inside a named tabletop region.
+category: verification
+parameters:
+  object:
+    type: string
+    required: true
+  region:
+    type: string
+    required: true
+    enum: [left_region, center_region, right_region, front_region]
+preconditions:
+  - object_exists
+effects:
+  - region_verified_or_failed
+motion_requirements: []
+ros_interfaces:
+  services:
+    - /gazebo/get_entity_state
+failure_modes:
+  - object_missing
+  - region_false
+recovery_policy: report_failure

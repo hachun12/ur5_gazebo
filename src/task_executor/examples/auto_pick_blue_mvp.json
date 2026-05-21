@@ -1,0 +1,53 @@
+{
+  "task_id": "auto_pick_blue_mvp",
+  "user_command": "automatically move to and pick the blue block",
+  "plan": [
+    {
+      "step": 1,
+      "skill": "observe_scene",
+      "args": {}
+    },
+    {
+      "step": 2,
+      "skill": "open_gripper",
+      "args": {}
+    },
+    {
+      "step": 3,
+      "skill": "move_above_object",
+      "args": {
+        "object": "blue_block",
+        "z_offset": 0.16
+      }
+    },
+    {
+      "step": 4,
+      "skill": "move_to_object",
+      "args": {
+        "object": "blue_block",
+        "z_offset": 0.04
+      }
+    },
+    {
+      "step": 5,
+      "skill": "close_gripper",
+      "args": {
+        "position": 0.3
+      }
+    },
+    {
+      "step": 6,
+      "skill": "attach_object",
+      "args": {
+        "object": "blue_block"
+      }
+    },
+    {
+      "step": 7,
+      "skill": "lift",
+      "args": {
+        "height": 0.15
+      }
+    }
+  ]
+}

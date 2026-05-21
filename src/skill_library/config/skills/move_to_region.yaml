@@ -1,0 +1,29 @@
+skill_id: move_to_region
+description: Move gripper_tcp to a named tabletop region using seeded IK followed by MoveIt joint-space planning.
+category: motion
+parameters:
+  region:
+    type: string
+    required: true
+    enum: [left_region, center_region, right_region, front_region]
+  tcp_z:
+    type: number
+    required: false
+preconditions:
+  - move_group_running
+  - region_exists
+effects:
+  - gripper_tcp_above_region
+motion_requirements:
+  planner: seeded_ik_joint_goal_ompl
+ros_interfaces:
+  services:
+    - /compute_ik
+  actions:
+    - /move_action
+failure_modes:
+  - move_group_unavailable
+  - ik_failed
+  - planning_failed
+  - execution_failed
+recovery_policy: stop_and_report_failure

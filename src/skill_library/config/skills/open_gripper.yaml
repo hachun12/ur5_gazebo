@@ -1,0 +1,18 @@
+skill_id: open_gripper
+description: Open the Robotiq 2F-85 gripper in simulation.
+category: manipulation
+parameters: {}
+preconditions:
+  - robotiq_gripper_controller_active
+effects:
+  - gripper_open
+motion_requirements:
+  planner: direct_joint_trajectory
+ros_interfaces:
+  actions:
+    - /robotiq_gripper_controller/follow_joint_trajectory
+failure_modes:
+  - gripper_controller_unavailable
+  - gripper_goal_rejected
+  - gripper_goal_aborted
+recovery_policy: stop_and_report_failure

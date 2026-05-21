@@ -1,0 +1,39 @@
+{
+  "task_id": "auto_pick_place_blue_left_mvp",
+  "user_command": "pick the blue block and place it in the left region",
+  "plan": [
+    {
+      "step": 1,
+      "skill": "observe_scene",
+      "args": {}
+    },
+    {
+      "step": 2,
+      "skill": "pick",
+      "args": {
+        "object": "blue_block"
+      }
+    },
+    {
+      "step": 3,
+      "skill": "move_to_region",
+      "args": {
+        "region": "left_region",
+        "tcp_z": 0.09
+      }
+    },
+    {
+      "step": 4,
+      "skill": "place",
+      "args": {}
+    },
+    {
+      "step": 5,
+      "skill": "verify_region",
+      "args": {
+        "object": "blue_block",
+        "region": "left_region"
+      }
+    }
+  ]
+}

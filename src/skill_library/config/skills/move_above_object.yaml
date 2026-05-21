@@ -1,0 +1,29 @@
+skill_id: move_above_object
+description: Move gripper_tcp above an object using seeded IK followed by MoveIt joint-space planning.
+category: motion
+parameters:
+  object:
+    type: string
+    required: true
+  z_offset:
+    type: number
+    required: false
+preconditions:
+  - object_exists
+  - move_group_running
+effects:
+  - gripper_tcp_above_object
+motion_requirements:
+  planner: seeded_ik_joint_goal_ompl
+ros_interfaces:
+  services:
+    - /gazebo/get_entity_state
+    - /compute_ik
+  actions:
+    - /move_action
+failure_modes:
+  - object_missing
+  - move_group_unavailable
+  - planning_failed
+  - execution_failed
+recovery_policy: stop_and_report_failure

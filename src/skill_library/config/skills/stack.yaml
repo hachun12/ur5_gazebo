@@ -1,0 +1,24 @@
+skill_id: stack
+description: Stack one block on another. Not implemented in the first executor.
+category: composite
+parameters:
+  top_object:
+    type: string
+    required: true
+  bottom_object:
+    type: string
+    required: true
+preconditions:
+  - objects_exist
+  - top_object_stackable
+  - bottom_object_stackable
+effects:
+  - relation_on_top_object_bottom_object
+motion_requirements:
+  planner: moveit_pose_goal
+ros_interfaces:
+  actions:
+    - /move_action
+failure_modes:
+  - not_implemented
+recovery_policy: report_not_implemented

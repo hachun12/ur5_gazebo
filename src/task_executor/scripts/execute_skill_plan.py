@@ -327,7 +327,54 @@ class SkillPlanExecutor(Node):
         raise RuntimeError(f"push is registered but not implemented yet: {args}")
 
     def skill_stack(self, args):
-        raise RuntimeError(f"stack is registered but not implemented yet: {args}")
+        top_object = args["top_object"]
+        bottom_object = args["bottom_object"]
+        if top_object == bottom_object:
+            raise RuntimeError("stack requires two different objects")
+        self.ensure_stackable_block(top_object)
+        self.ensure_stackable_block(bottom_object)
+
+        approach_clearance = float(args.get("approach_clearance", 0.10))
+        place_tcp_z_offset = float(args.get("place_tcp_z_offset", 0.105))
+        bottom_pose = self.get_entity_pose(bottom_object)
+        place_tcp_z = bottom_pose.position.z + place_tcp_z_offset
+        approach_tcp_z = place_tcp_z + approach_clearance
+
+        self.get_logger().info(
+            f"stack({top_object}, {bottom_object}): "
+            f"place_tcp_z={place_tcp_z:.3f} approach_tcp_z={approach_tcp_z:.3f}"
+        )
+        self.skill_pick({"object": top_object})
+        bottom_pose = self.get_entity_pose(bottom_object)
+        self.move_tcp_seeded_ik_joint_goal(
+            bottom_pose.position.x,
+            bottom_pose.position.y,
+            approach_tcp_z,
+            label=f"stack/above({bottom_object})",
+            position_tolerance=0.02,
+        )
+        self.move_tcp_cartesian_to_pose(
+            bottom_pose.position.x,
+            bottom_pose.position.y,
+            place_tcp_z,
+            label=f"stack/place_on({bottom_object})",
+            position_tolerance=0.015,
+        )
+        self.skill_place({})
+        self.skill_verify_relation(
+            {
+                "relation": "on",
+                "object_a": top_object,
+                "object_b": bottom_object,
+            }
+        )
+
+    def ensure_stackable_block(self, object_name):
+        metadata = OBJECTS.get(object_name)
+        if metadata is None:
+            raise RuntimeError(f"unknown object: {object_name}")
+        if metadata.get("class") != "block":
+            raise RuntimeError(f"{object_name} is not stackable in the MVP scene")
 
     def move_tcp_to_pose(self, x, y, z, label, position_tolerance=0.015):
         current_pose = self.get_tcp_pose()
@@ -761,7 +808,7 @@ class SkillPlanExecutor(Node):
         rclpy.spin_until_future_complete(self, future)
         response = future.result()
         if response is None or not response.success:
-            message = "" if response is None else response.status_message
+            message = "no response" if response is None else "entity not found"
             raise RuntimeError(f"failed to read {name}: {message}")
         return response.state.pose
 

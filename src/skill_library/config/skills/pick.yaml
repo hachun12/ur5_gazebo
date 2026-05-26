@@ -1,6 +1,7 @@
 skill_id: pick
 description: Segmented MVP pick using MoveIt pose goals, gripper control, and Gazebo sim attachment.
 category: composite
+llm_usage: avoid_when_atomic_plan_is_possible
 parameters:
   object:
     type: string

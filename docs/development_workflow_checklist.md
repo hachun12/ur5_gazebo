@@ -1,6 +1,6 @@
 # UR5 Gazebo MoveIt2 LLM-TAMP 開發流程檢核文件
 
-本文件用來追蹤 ROS2 Humble 專案從目前僅有 `ur5_description`，逐步擴充到可在 Gazebo 模擬中用本地端 Whisper 語音輸入、本地端 Ollama Qwen 產生 skill plan，並透過 MoveIt2 控制 UR5 + Robotiq 2F-85 操作桌面物件的完整流程。
+本文件用來追蹤 ROS2 Humble 專案從目前僅有 `ur5_description`，逐步擴充到可在 Gazebo 模擬中用 Whisper 語音輸入、LLM 產生 skill plan，並透過 MoveIt2 控制 UR5 + Robotiq 2F-85 操作桌面物件的完整流程。
 
 目標系統：
 
@@ -10,7 +10,7 @@
 - Controller：`ros2_control`
 - Gripper：Robotiq 2F-85
 - Camera：Intel RealSense D435i RGBD
-- Local LLM：Ollama Qwen
+- LLM：OpenAI API 快速概念驗證；Ollama Qwen 作為未來本地端部署路線
 - Local STT：Whisper / faster-whisper
 - UI：Web frontend + backend API
 - TAMP：LLM 產生結構化 skill sequence，validator 檢查後由 skill executor 執行
@@ -519,7 +519,7 @@ verify_region(object, region)
 
 ## 7. TAMP / LLM Planner
 
-### 7.1 本地端 Ollama Qwen
+### 7.1 LLM Provider
 
 LLM 節點只負責：
 
@@ -535,15 +535,23 @@ LLM 不負責：
 - 發明不存在 skill
 - 直接執行 ROS action
 
-Ollama interface：
+OpenAI interface 用於快速概念驗證：
+
+```text
+POST https://api.openai.com/v1/responses
+model: gpt-5.2
+```
+
+Ollama interface 用於未來本地端部署：
 
 ```text
 POST http://localhost:11434/api/generate
-model: qwen
+model: qwen3.5:27b-q4_K_M
 ```
 
 檢核：
 
+- [ ] OpenAI API key 可用於快速 PoC。
 - [ ] Ollama server 本地可用。
 - [ ] Qwen model 可回應。
 - [ ] planner 可設定 timeout。
@@ -893,37 +901,42 @@ notes
 - [x] `move_to_region`：移動到命名桌面區域，支援 left/center/right/front。
 - [x] `pick` MVP：自動 open、move_above、move_to、close、attach、lift。
 - [x] `place` MVP：假設 TCP 已在放置點，執行 detach/open。
-- [ ] `stack`
+- [x] `stack` MVP shortcut：保留為 debug/smoke test，但 LLM 預設不使用。
+- [x] atomic stack plan example：用 open/move/approach/close/lift/move/approach/open/verify 組合完成堆疊。
 - [ ] `push`
 - [x] verify skills：`verify_relation`、`verify_region` 初版。
 - [x] 文件化 M5：`docs/m5_skill_executor_mvp.md`。
 - [x] 文件化 MoveIt pose-goal、RViz marker IK branch、seeded IK + joint-space OMPL、Cartesian approach/retreat 的差異與處理方式：`docs/m5_motion_planning_notes.md`。
+- [x] 文件化 M6 atomic planning prompt 初版：`docs/m6_llm_atomic_planning_prompt.md`。
 
-### M6：本地端 LLM plan
+### M6：LLM plan
 
 完成條件：
 
-- [ ] Ollama Qwen 可用。
-- [ ] prompt generator 可用。
-- [ ] LLM 產生 JSON plan。
-- [ ] validator 可拒絕不合法 plan。
+- [ ] OpenAI API 可產生合法 JSON plan。
+- [ ] Ollama Qwen 可用於本地部署測試。
+- [x] prompt generator 可用：`ros2 run task_executor generate_skill_plan.py "<command>" --dry-run`。
+- [ ] LLM 產生 JSON plan：`generate_skill_plan.py "<command>" --output /tmp/plan.json`。
+- [x] validator 可拒絕不合法 plan：預設拒絕 composite skill，檢查 required args/type/enum。
+- [x] 文件化 M6 CLI：`docs/m6_local_llm_planner.md`。
 
 ### M7：Web UI MVP
 
 完成條件：
 
-- [ ] 文字輸入任務。
-- [ ] 顯示 world state。
-- [ ] 顯示/驗證/執行 plan。
-- [ ] 顯示任務狀態與 log。
+- [x] 文字輸入任務。
+- [x] 顯示 world state。
+- [x] 顯示/驗證/執行 plan。
+- [x] 顯示任務狀態與 log。
+- [x] 文件化 M7 Web UI：`docs/m7_web_ui_mvp.md`。
 
 ### M8：Whisper STT
 
 完成條件：
 
-- [ ] 網頁錄音。
-- [ ] 本地 Whisper 轉文字。
-- [ ] 可送入 planner。
+- [x] 網頁錄音。
+- [x] 本地 Whisper 轉文字。
+- [x] 可送入 planner。
 
 ### M9：D435i + YOLO/RGBD 感知
 

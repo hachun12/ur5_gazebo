@@ -5,6 +5,8 @@ find_package(ament_cmake REQUIRED)
 
 install(PROGRAMS
   scripts/execute_skill_plan.py
+  scripts/generate_skill_plan.py
+  scripts/web_task_ui.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

@@ -1,6 +1,7 @@
 skill_id: stack
-description: Stack one block on another. Not implemented in the first executor.
+description: Pick one block and place it on top of another block using the segmented MVP motion policy.
 category: composite
+llm_usage: debug_shortcut_only_prefer_atomic_sequence
 parameters:
   top_object:
     type: string
@@ -8,6 +9,12 @@ parameters:
   bottom_object:
     type: string
     required: true
+  approach_clearance:
+    type: number
+    required: false
+  place_tcp_z_offset:
+    type: number
+    required: false
 preconditions:
   - objects_exist
   - top_object_stackable
@@ -15,10 +22,22 @@ preconditions:
 effects:
   - relation_on_top_object_bottom_object
 motion_requirements:
-  planner: moveit_pose_goal
+  planner: seeded_ik_ompl_transit_then_cartesian_place_mvp
 ros_interfaces:
   actions:
     - /move_action
+    - /execute_trajectory
+    - /robotiq_gripper_controller/follow_joint_trajectory
+  services:
+    - /gazebo/get_entity_state
+    - /compute_ik
+    - /compute_cartesian_path
+    - /sim_grasp_adapter/attach_target
+    - /sim_grasp_adapter/detach
 failure_modes:
-  - not_implemented
-recovery_policy: report_not_implemented
+  - planning_failed
+  - gripper_command_failed
+  - attach_failed
+  - object_not_stackable
+  - relation_verification_failed
+recovery_policy: stop_and_report_failure

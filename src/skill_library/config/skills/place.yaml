@@ -1,6 +1,7 @@
 skill_id: place
 description: MVP place by detaching the currently attached object at the current gripper pose.
 category: composite
+llm_usage: avoid_when_atomic_plan_is_possible
 parameters:
   object:
     type: string

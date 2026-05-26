@@ -6,6 +6,10 @@ src/ros2_robotiq_gripper/
 .agents/
 .codex/
 scene/
+tools/ollama/
+.env
+.env.*
+!.env.example
 
 *.pyc
 __pycache__/

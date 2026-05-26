@@ -5,7 +5,7 @@ parameters:
   relation:
     type: string
     required: true
-    enum: [on, left_of, right_of, in_front_of, behind]
+    enum: ["on", "left_of", "right_of", "in_front_of", "behind"]
   object_a:
     type: string
     required: true

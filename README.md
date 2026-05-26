@@ -8,6 +8,40 @@ The current simulation uses:
 - `ur5_gazebo`: Gazebo world, launch file, ros2_control controller config, and smoke-test scripts.
 - `docs/`: development checklist and troubleshooting notes, including the Gazebo mimic/passive joint issue for Robotiq 2F-85.
 
+## Fresh Ubuntu Setup
+
+This project targets Ubuntu 22.04 + ROS 2 Humble + Gazebo Classic + MoveIt 2.
+After reinstalling the computer, run:
+
+```bash
+cd ~/workspace/ur5_gazebo
+chmod +x scripts/setup_ubuntu22_humble.sh scripts/check_env.sh
+./scripts/setup_ubuntu22_humble.sh
+```
+
+Open a new terminal, then verify:
+
+```bash
+cd ~/workspace/ur5_gazebo
+./scripts/check_env.sh
+```
+
+Configure the OpenAI API key without committing secrets:
+
+```bash
+cp .env.example .env
+edit .env
+source .env
+```
+
+For a one-off shell session, this is enough:
+
+```bash
+export OPENAI_API_KEY="your API key"
+```
+
+Do not put a real API key in tracked source files.
+
 ## Dependencies
 
 ```bash
@@ -59,6 +93,58 @@ If RViz cannot create an OpenGL context:
 ```bash
 ros2 launch ur5_moveit_config moveit_rviz.launch.py software_rendering:=true
 ```
+
+## Launch Full Bringup
+
+Start Gazebo, MoveIt2, and RViz2 from one terminal:
+
+```bash
+ros2 launch ur5_gazebo full_bringup.launch.py
+```
+
+Headless Gazebo with RViz2:
+
+```bash
+ros2 launch ur5_gazebo full_bringup.launch.py gui:=false
+```
+
+Start Gazebo and MoveIt2 without RViz2:
+
+```bash
+ros2 launch ur5_gazebo full_bringup.launch.py launch_rviz:=false
+```
+
+## Launch Web Task UI
+
+Start Gazebo first. Then in another terminal:
+
+```bash
+cd ~/workspace/ur5_gazebo
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+source .env
+ros2 run task_executor web_task_ui.py
+```
+
+Open:
+
+```text
+http://127.0.0.1:8080
+```
+
+## M8 Local Speech-To-Text
+
+Install local Whisper STT dependencies:
+
+```bash
+cd ~/workspace/ur5_gazebo
+chmod +x scripts/setup_m8_stt.sh
+./scripts/setup_m8_stt.sh
+```
+
+Then restart the Web Task UI. The UI can record audio, transcribe locally with
+`faster-whisper`, place the transcript into the task box, and generate a plan
+with the selected LLM provider.
 
 ## Smoke Tests
 

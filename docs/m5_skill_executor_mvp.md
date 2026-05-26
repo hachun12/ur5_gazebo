@@ -50,6 +50,7 @@ attach_object(object)
 detach_object()
 pick(object)
 place(object, target?)
+stack(top_object, bottom_object)
 verify_relation(relation, object_a, object_b)
 verify_region(object, region)
 ```
@@ -58,7 +59,6 @@ verify_region(object, region)
 
 ```text
 push(object, direction, distance)
-stack(top_object, bottom_object)
 ```
 
 ## Important MVP Assumption
@@ -84,14 +84,50 @@ lift(height=0.15)
 
 注意：物件在手指中間時，不應命令 Robotiq trajectory controller 全閉到 `0.8`。Gazebo 中手指接觸方塊後 joint 無法到達全閉目標，`joint_trajectory_controller` 會回報 `PATH_TOLERANCE_VIOLATED`。MVP pick 目前使用 `position=0.70` 作為抓取閉合量。
 
-`place(...)` 目前仍是假設使用者已透過 RViz/MoveIt 或未來的 pose skill 將已附著物件移到目標上方：
+`place(...)` 目前仍是假設使用者已透過 RViz/MoveIt 或其他 skill 將已附著物件移到目標上方：
 
 ```text
 detach_object
 open_gripper
 ```
 
-下一步會加入 `move_to_region(region)` 與 stack 專用的 `move_above_object_for_stack(top_object, bottom_object)`，把 place/stack 也自動化。
+`pick`、`place`、`stack` 是第一版 composite/debug shortcut。它們可以保留給 smoke test 或人工 baseline，但 LLM planner 預設應輸出 atomic sequence。
+
+`stack(top_object, bottom_object)` shortcut 內部流程：
+
+```text
+pick(top_object)
+move above bottom_object with seeded IK + joint-space OMPL
+Cartesian descend to stack placement height
+place()
+verify_relation(on, top_object, bottom_object)
+```
+
+可調參數：
+
+```text
+approach_clearance:   放置點上方保留高度，預設 0.10 m
+place_tcp_z_offset:   bottom_object center 到 gripper_tcp 放置高度的 z offset，預設 0.105 m
+```
+
+`place_tcp_z_offset` 和目前 sim grasp adapter 的 object-to-TCP offset 有關。若方塊放開後高度略高或碰撞下方方塊，可先從 JSON plan 微調這個值，而不是改 skill 程式。
+
+正式 LLM/TAMP 流程不要直接輸出 `stack(...)`，而是輸出：
+
+```text
+observe_scene
+open_gripper
+move_above_object(top_object)
+move_to_object(top_object)
+close_gripper
+attach_object(top_object)
+lift
+move_above_object(bottom_object, stack_clearance)
+move_to_object(bottom_object, stack_place_height)
+detach_object
+open_gripper
+verify_relation(on, top_object, bottom_object)
+```
 
 ## Example
 
@@ -181,10 +217,10 @@ move_to_object(object)
 lift(height)
 ```
 
-下一步應新增：
+已新增 stack MVP：
 
 ```text
-move_above_object_for_stack(top_object, bottom_object)
+stack(top_object, bottom_object, approach_clearance?, place_tcp_z_offset?)
 ```
 
 ## Named Regions
@@ -205,4 +241,11 @@ front_region:  x=0.50, y= 0.00
 ```bash
 ros2 run task_executor execute_skill_plan.py \
   install/task_executor/share/task_executor/examples/auto_pick_place_blue_left_mvp.json
+```
+
+堆疊範例目前使用 atomic sequence，不使用 `stack` shortcut：
+
+```bash
+ros2 run task_executor execute_skill_plan.py \
+  install/task_executor/share/task_executor/examples/auto_stack_blue_on_green_mvp.json
 ```

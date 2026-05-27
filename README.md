@@ -175,6 +175,7 @@ ros2 run ur5_gazebo grasp_target.py detach
 
 ## Notes
 
+See `docs/system_architecture.md` for the full system architecture, including the LLM planner, skill library, executor, Web UI, and skill extension workflow.
 See `docs/m2_robotiq_2f85_gazebo_notes.md` for why the simulation controls the Robotiq gripper as six synchronized joints in Gazebo, and why the real robot deployment should hide this behind a gripper adapter.
 See `docs/m3_tabletop_objects_world_state.md` for the tabletop object layout and the world-state JSON schema.
 See `docs/m4_moveit2_rviz_control.md` for RViz planning and execution.

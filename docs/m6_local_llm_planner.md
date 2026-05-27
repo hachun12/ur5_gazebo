@@ -141,6 +141,59 @@ verify_relation(on, blue_block, green_block)
 --allow-composite
 ```
 
+## Prompt Policy Configuration
+
+Planner prompt policy is loaded from:
+
+```text
+src/skill_library/config/planning/prompt_policy.yaml
+```
+
+This file controls:
+
+- base planner rules
+- atomic skill allow-list
+- default planning parameters
+- task recipes such as pick, place, and stack
+
+`generate_skill_plan.py` still reads each skill schema from:
+
+```text
+src/skill_library/config/skills/*.yaml
+```
+
+The skill YAML files define the available skill ids and argument schemas. The
+prompt policy explains how the planner should combine those skills for common
+tasks.
+
+To test a modified prompt policy without installing it:
+
+```bash
+ros2 run task_executor generate_skill_plan.py \
+  "把藍色方塊疊到綠色方塊上" \
+  --provider ollama \
+  --model gemma4:latest \
+  --prompt-policy-file src/skill_library/config/planning/prompt_policy.yaml \
+  --dry-run
+```
+
+After changing the installed policy, rebuild:
+
+```bash
+colcon build --symlink-install --packages-select skill_library task_executor
+source install/setup.bash
+```
+
+## Adding A Skill
+
+Minimum steps:
+
+1. Add `src/skill_library/config/skills/<skill_id>.yaml`.
+2. Implement `skill_<skill_id>()` in `src/task_executor/scripts/execute_skill_plan.py`.
+3. If the LLM may use it directly, add the skill id to `atomic_skills` in `prompt_policy.yaml`.
+4. If it is part of a common task, add or update a recipe in `prompt_policy.yaml`.
+5. Run `generate_skill_plan.py --dry-run`, then generate and validate a plan.
+
 ## Validation And Repair
 
 Planner 會先做本地 JSON/schema validation：

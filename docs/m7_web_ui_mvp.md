@@ -54,6 +54,7 @@ ros2 run task_executor web_task_ui.py --port 8081
 - Refresh World：呼叫 `ur5_gazebo print_world_state.py`。
 - Prompt：呼叫 `task_executor generate_skill_plan.py --dry-run`。
 - Generate Plan：呼叫所選 LLM provider 產生 JSON plan。
+- Plan editor：生成後可在右側調整 skill block，包含新增、刪除、上下移動、選擇 skill，以及修改 args JSON；修改會同步回左側 `Plan JSON`。
 - Validate：呼叫 `task_executor execute_skill_plan.py <plan> --validate-only`。
 - Execute：呼叫 `task_executor execute_skill_plan.py <plan>`。
 
@@ -70,6 +71,9 @@ POST /api/prompt
 POST /api/generate_plan
 POST /api/validate_plan
 POST /api/execute_plan
+POST /api/execute_plan_async
+GET  /api/execution/<job_id>
+POST /api/stt
 ```
 
 ## OpenAI API Requirement
@@ -109,11 +113,10 @@ ollama pull qwen3.5:27b-q4_K_M
 
 ## MVP Limitation
 
-UI 的 Execute 會直接執行目前 textarea 裡的 plan。實機部署前需要再加入：
+UI 的 Execute 會直接執行目前 `Plan JSON` 裡的 plan。右側 plan editor 的變更會同步回 `Plan JSON`，Validate/Execute 前仍會由 executor 做 schema 驗證。實機部署前需要再加入：
 
 - confirmed execution gate
 - speed/workspace safety limits
 - E-stop 狀態顯示
 - user/session log
-- plan diff/review
-- STT input
+- plan diff/review history

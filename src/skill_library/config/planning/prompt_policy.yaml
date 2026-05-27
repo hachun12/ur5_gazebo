@@ -1,0 +1,56 @@
+role: robot_task_planner
+
+rules:
+  - Return one JSON object and nothing else.
+  - Use only skills listed in skill_registry.
+  - Prefer atomic skills. Do not use composite/debug skills unless explicitly allowed.
+  - Do not invent object names, region names, ROS topics, or skill names.
+  - Spatial relation values are strings. Use "on", not bare YAML-style on.
+  - Use consecutive integer step numbers starting at 1.
+
+atomic_skills:
+  - observe_scene
+  - move_ready
+  - open_gripper
+  - close_gripper
+  - move_above_object
+  - move_to_object
+  - move_to_region
+  - lift
+  - attach_object
+  - detach_object
+  - verify_relation
+  - verify_region
+
+default_parameters:
+  pick_approach_z_offset: 0.16
+  pick_contact_z_offset: 0.04
+  grasp_close_position: 0.3
+  lift_height: 0.15
+  stack_approach_z_offset: 0.205
+  stack_place_z_offset: 0.105
+  move_to_region_tcp_z: 0.09
+
+recipes:
+  pick:
+    description: Pick object A using atomic skills.
+    instruction: >-
+      For pick A: observe_scene, open_gripper,
+      move_above_object(A, z_offset=0.16),
+      move_to_object(A, z_offset=0.04),
+      close_gripper(position=0.3), attach_object(A), lift(height=0.15).
+  place_in_region:
+    description: Place the currently attached object in a named region.
+    instruction: >-
+      For place in region R: move_to_region(R, tcp_z=0.09),
+      detach_object, open_gripper, verify_region(object, R).
+  stack:
+    description: Stack object A on object B using only atomic skills.
+    instruction: >-
+      For stack A on B: observe_scene, open_gripper,
+      move_above_object(A, z_offset=0.16),
+      move_to_object(A, z_offset=0.04),
+      close_gripper(position=0.3), attach_object(A), lift(height=0.15),
+      move_above_object(B, z_offset=0.205),
+      move_to_object(B, z_offset=0.105),
+      detach_object, open_gripper, verify_relation(on, A, B).

@@ -247,11 +247,61 @@ HTML = """<!doctype html>
     .step-card.pending {
       background: #fbfcfd;
     }
+    .step-card.dirty {
+      border-color: #f6c76f;
+      background: var(--warn-bg);
+    }
     .step-top {
       display: flex;
       justify-content: space-between;
       gap: 8px;
       align-items: center;
+    }
+    .step-controls {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: nowrap;
+    }
+    .icon-btn {
+      width: 30px;
+      height: 30px;
+      padding: 0;
+      display: inline-grid;
+      place-items: center;
+      font-size: 15px;
+      line-height: 1;
+    }
+    .icon-btn.danger {
+      color: var(--danger);
+      border-color: #ffb4a8;
+      background: var(--danger-bg);
+    }
+    .step-fields {
+      display: grid;
+      gap: 8px;
+    }
+    .step-field-label {
+      margin: 0;
+      font-size: 11px;
+      letter-spacing: 0;
+    }
+    .skill-input {
+      height: 34px;
+      padding: 7px 9px;
+      font-size: 13px;
+      font-weight: 650;
+    }
+    textarea.args-input {
+      min-height: 78px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.4;
+      resize: vertical;
+    }
+    .step-card.invalid {
+      border-color: #ffb4a8;
+      background: var(--danger-bg);
     }
     .step-name {
       font-weight: 750;
@@ -394,7 +444,10 @@ HTML = """<!doctype html>
           <h2 id="planName">Generated Plan</h2>
           <div id="planMeta" class="plan-meta">No plan generated yet</div>
         </div>
-        <span id="planState" class="badge">idle</span>
+        <div class="toolbar">
+          <button id="addStepBtn">Add Step</button>
+          <span id="planState" class="badge">idle</span>
+        </div>
       </div>
       <div id="steps" class="step-grid">
         <div class="empty">Generate a plan to inspect skill order and arguments.</div>
@@ -408,11 +461,28 @@ HTML = """<!doctype html>
   <script>
     const $ = (id) => document.getElementById(id);
     const status = $("status");
-    const buttons = Array.from(document.querySelectorAll("button"));
     const modelOptions = {
       ollama: ["gemma4:latest", "qwen3.5:27b-q4_K_M"],
       openai: ["gpt-5.2", "gpt-5.1", "gpt-4.1"]
     };
+    const availableSkills = [
+      "attach_object",
+      "close_gripper",
+      "detach_object",
+      "lift",
+      "move_above_object",
+      "move_ready",
+      "move_to_object",
+      "move_to_region",
+      "observe_scene",
+      "open_gripper",
+      "pick",
+      "place",
+      "push",
+      "stack",
+      "verify_region",
+      "verify_relation"
+    ];
     let currentPlan = null;
     let stepStates = [];
     let mediaRecorder = null;
@@ -451,18 +521,22 @@ HTML = """<!doctype html>
     function setBusy(text) {
       status.textContent = text;
       status.className = "status";
-      buttons.forEach((button) => button.disabled = true);
+      allButtons().forEach((button) => button.disabled = true);
     }
 
     function setDone(text, error=false) {
       status.textContent = text;
       status.className = error ? "status error" : "status";
-      buttons.forEach((button) => button.disabled = false);
+      allButtons().forEach((button) => button.disabled = false);
     }
 
     function pretty(value) {
       if (typeof value === "string") return value;
       return JSON.stringify(value, null, 2);
+    }
+
+    function allButtons() {
+      return Array.from(document.querySelectorAll("button"));
     }
 
     function escapeHTML(value) {
@@ -472,6 +546,14 @@ HTML = """<!doctype html>
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#39;");
+    }
+
+    function renderSkillOptions(selected) {
+      const options = availableSkills.includes(selected) ? availableSkills : [selected, ...availableSkills].filter(Boolean);
+      return options.map((skill) => {
+        const isSelected = skill === selected ? " selected" : "";
+        return `<option value="${escapeHTML(skill)}"${isSelected}>${escapeHTML(skill)}</option>`;
+      }).join("");
     }
 
     async function api(path, body=null, allowError=false) {
@@ -536,38 +618,161 @@ HTML = """<!doctype html>
       }[state] || state;
     }
 
-    function renderPlan(plan, states=null) {
-      currentPlan = plan;
-      stepStates = states || initializeStepStates(plan);
+    function normalizePlanSteps(plan) {
+      if (!plan || !Array.isArray(plan.plan)) return plan;
+      plan.plan = plan.plan.map((step, index) => ({
+        ...step,
+        step: index + 1,
+        args: step.args && typeof step.args === "object" && !Array.isArray(step.args) ? step.args : {}
+      }));
+      return plan;
+    }
+
+    function ensurePlan() {
+      if (currentPlan && typeof currentPlan === "object") return currentPlan;
+      const command = $("command").value;
+      currentPlan = {
+        task_id: "manual_plan",
+        user_command: command,
+        plan: []
+      };
+      return currentPlan;
+    }
+
+    function syncPlanText(plan=currentPlan) {
+      if (!plan) return;
+      normalizePlanSteps(plan);
       $("plan").value = pretty(plan);
       $("planName").textContent = plan.task_id || "Generated Plan";
       $("planMeta").textContent = `${planSteps(plan).length} skill step(s) | ${plan.user_command || $("command").value}`;
+    }
+
+    function markPlanEdited() {
+      setPlanBadge("edited", "running");
+      stepStates = initializeStepStates(currentPlan);
+    }
+
+    function setStepValidation(index, message) {
+      const card = $("steps").querySelector(`[data-step-index="${index}"]`);
+      if (!card) return;
+      card.classList.toggle("invalid", Boolean(message));
+      const error = card.querySelector(".step-error");
+      if (error) error.textContent = message || "";
+    }
+
+    function renderPlan(plan, states=null) {
+      currentPlan = normalizePlanSteps(plan);
+      stepStates = states || initializeStepStates(plan);
+      syncPlanText(currentPlan);
       const stateByStep = new Map(stepStates.map((item) => [item.step, item]));
       $("steps").innerHTML = "";
       for (const step of planSteps(plan)) {
+        const index = step.step - 1;
         const state = stateByStep.get(step.step) || {state: "pending", message: ""};
         const card = document.createElement("article");
         card.className = `step-card ${state.state || "pending"}`;
+        card.dataset.stepIndex = String(index);
         card.innerHTML = `
           <div class="step-top">
-            <div class="step-name">${escapeHTML(step.step)}. ${escapeHTML(step.skill)}</div>
-            <span class="badge ${state.state || "pending"}">${statusText(state.state || "pending")}</span>
+            <div class="step-name">Step ${escapeHTML(step.step)}</div>
+            <div class="step-controls">
+              <button class="icon-btn" data-action="up" data-index="${index}" title="Move up" aria-label="Move step up">↑</button>
+              <button class="icon-btn" data-action="down" data-index="${index}" title="Move down" aria-label="Move step down">↓</button>
+              <button class="icon-btn danger" data-action="delete" data-index="${index}" title="Delete" aria-label="Delete step">×</button>
+              <span class="badge ${state.state || "pending"}">${statusText(state.state || "pending")}</span>
+            </div>
           </div>
-          <pre class="step-args">${escapeHTML(pretty(step.args || {}))}</pre>
-          ${state.message ? `<div class="step-error">${escapeHTML(state.message)}</div>` : ""}
+          <div class="step-fields">
+            <div>
+              <label class="step-field-label" for="skill-${index}">Skill</label>
+              <select id="skill-${index}" class="skill-input" data-field="skill" data-index="${index}">
+                ${renderSkillOptions(step.skill || "")}
+              </select>
+            </div>
+            <div>
+              <label class="step-field-label" for="args-${index}">Args JSON</label>
+              <textarea id="args-${index}" class="args-input" data-field="args" data-index="${index}">${escapeHTML(pretty(step.args || {}))}</textarea>
+            </div>
+          </div>
+          <div class="step-error">${state.message ? escapeHTML(state.message) : ""}</div>
         `;
         $("steps").appendChild(card);
+      }
+      if (planSteps(plan).length === 0) {
+        $("steps").innerHTML = `<div class="empty">Add a skill step or generate a plan.</div>`;
       }
     }
 
     function parsePlanFromText() {
-      const plan = JSON.parse($("plan").value);
-      currentPlan = plan;
-      if (!$("steps").querySelector(".step-card")) {
-        renderPlan(plan);
+      const invalidEditor = $("steps").querySelector(".step-card.invalid");
+      if (invalidEditor) {
+        throw {error: "fix invalid skill args before validating or executing"};
       }
+      const plan = JSON.parse($("plan").value);
+      renderPlan(normalizePlanSteps(plan));
       return plan;
     }
+
+    $("steps").addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-action]");
+      if (!button || !currentPlan) return;
+      const index = Number(button.dataset.index);
+      const steps = planSteps(currentPlan);
+      if (!Number.isInteger(index) || index < 0 || index >= steps.length) return;
+
+      if (button.dataset.action === "delete") {
+        steps.splice(index, 1);
+      } else if (button.dataset.action === "up" && index > 0) {
+        [steps[index - 1], steps[index]] = [steps[index], steps[index - 1]];
+      } else if (button.dataset.action === "down" && index < steps.length - 1) {
+        [steps[index], steps[index + 1]] = [steps[index + 1], steps[index]];
+      }
+      normalizePlanSteps(currentPlan);
+      markPlanEdited();
+      renderPlan(currentPlan, stepStates);
+    });
+
+    $("steps").addEventListener("input", (event) => {
+      const target = event.target;
+      if (!target.dataset || !target.dataset.field) return;
+      const plan = ensurePlan();
+      const index = Number(target.dataset.index);
+      const step = planSteps(plan)[index];
+      if (!step) return;
+
+      if (target.dataset.field === "skill") {
+        step.skill = target.value.trim();
+        setStepValidation(index, "");
+      } else if (target.dataset.field === "args") {
+        try {
+          const args = JSON.parse(target.value || "{}");
+          if (!args || typeof args !== "object" || Array.isArray(args)) {
+            throw new Error("args must be a JSON object");
+          }
+          step.args = args;
+          setStepValidation(index, "");
+        } catch (err) {
+          setStepValidation(index, err.message);
+          setPlanBadge("invalid args", "failed");
+          return;
+        }
+      }
+      normalizePlanSteps(plan);
+      syncPlanText(plan);
+      markPlanEdited();
+    });
+
+    $("addStepBtn").onclick = () => {
+      const plan = ensurePlan();
+      plan.plan.push({
+        step: plan.plan.length + 1,
+        skill: "observe_scene",
+        args: {}
+      });
+      normalizePlanSteps(plan);
+      markPlanEdited();
+      renderPlan(plan, stepStates);
+    };
 
     $("worldBtn").onclick = () => run("reading world", async () => {
       const data = await api("/api/world_state");

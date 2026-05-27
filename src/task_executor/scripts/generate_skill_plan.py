@@ -20,19 +20,66 @@ DEFAULT_OBJECTS = {
     "green_ball": {"type": "sphere", "color": "green", "stackable": False},
 }
 
-ATOMIC_SKILLS = {
-    "observe_scene",
-    "move_ready",
-    "open_gripper",
-    "close_gripper",
-    "move_above_object",
-    "move_to_object",
-    "move_to_region",
-    "lift",
-    "attach_object",
-    "detach_object",
-    "verify_relation",
-    "verify_region",
+DEFAULT_POLICY = {
+    "role": "robot_task_planner",
+    "rules": [
+        "Return one JSON object and nothing else.",
+        "Use only skills listed in skill_registry.",
+        "Prefer atomic skills. Do not use composite/debug skills unless explicitly allowed.",
+        "Do not invent object names, region names, ROS topics, or skill names.",
+        "Spatial relation values are strings. Use \"on\", not bare YAML-style on.",
+        "Use consecutive integer step numbers starting at 1.",
+    ],
+    "atomic_skills": [
+        "observe_scene",
+        "move_ready",
+        "open_gripper",
+        "close_gripper",
+        "move_above_object",
+        "move_to_object",
+        "move_to_region",
+        "lift",
+        "attach_object",
+        "detach_object",
+        "verify_relation",
+        "verify_region",
+    ],
+    "default_parameters": {
+        "pick_approach_z_offset": 0.16,
+        "pick_contact_z_offset": 0.04,
+        "grasp_close_position": 0.3,
+        "lift_height": 0.15,
+        "stack_approach_z_offset": 0.205,
+        "stack_place_z_offset": 0.105,
+        "move_to_region_tcp_z": 0.09,
+    },
+    "recipes": {
+        "pick": {
+            "instruction": (
+                "For pick A: observe_scene, open_gripper, "
+                "move_above_object(A, z_offset=0.16), "
+                "move_to_object(A, z_offset=0.04), "
+                "close_gripper(position=0.3), attach_object(A), lift(height=0.15)."
+            )
+        },
+        "place_in_region": {
+            "instruction": (
+                "For place in region R: move_to_region(R, tcp_z=0.09), "
+                "detach_object, open_gripper, verify_region(object, R)."
+            )
+        },
+        "stack": {
+            "instruction": (
+                "For stack A on B: observe_scene, open_gripper, "
+                "move_above_object(A, z_offset=0.16), "
+                "move_to_object(A, z_offset=0.04), "
+                "close_gripper(position=0.3), attach_object(A), lift(height=0.15), "
+                "move_above_object(B, z_offset=0.205), "
+                "move_to_object(B, z_offset=0.105), "
+                "detach_object, open_gripper, verify_relation(on, A, B)."
+            )
+        },
+    },
 }
 
 
@@ -51,6 +98,31 @@ def load_skill_registry():
     return registry
 
 
+def load_prompt_policy(path=None):
+    if path:
+        policy_path = Path(path)
+    else:
+        share = Path(get_package_share_directory("skill_library"))
+        policy_path = share / "config" / "planning" / "prompt_policy.yaml"
+
+    if not policy_path.exists():
+        return DEFAULT_POLICY
+
+    with policy_path.open("r", encoding="utf-8") as stream:
+        policy = yaml.safe_load(stream) or {}
+    return merge_prompt_policy(DEFAULT_POLICY, policy)
+
+
+def merge_prompt_policy(base, override):
+    merged = dict(base)
+    for key, value in override.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = {**merged[key], **value}
+        else:
+            merged[key] = value
+    return merged
+
+
 def load_world_state(path):
     if path is None:
         return {
@@ -64,7 +136,7 @@ def load_world_state(path):
         return json.load(stream)
 
 
-def validate_plan(plan, registry, require_atomic=True):
+def validate_plan(plan, registry, atomic_skills, require_atomic=True):
     if not isinstance(plan, dict):
         raise PlanValidationError("plan must be a JSON object")
     if "plan" not in plan or not isinstance(plan["plan"], list):
@@ -79,7 +151,7 @@ def validate_plan(plan, registry, require_atomic=True):
         skill_id = step.get("skill")
         if skill_id not in registry:
             raise PlanValidationError(f"unknown skill: {skill_id}")
-        if require_atomic and skill_id not in ATOMIC_SKILLS:
+        if require_atomic and skill_id not in atomic_skills:
             raise PlanValidationError(f"LLM plan should use atomic skills; got composite skill: {skill_id}")
 
         args = step.get("args", {})
@@ -108,42 +180,43 @@ def validate_arg(skill_id, name, parameter, value):
         raise PlanValidationError(f"{skill_id}.{name} must be one of {allowed}")
 
 
-def compact_skill_registry(registry, atomic_only=True):
+def compact_skill_registry(registry, atomic_skills, atomic_only=True):
     compact = {}
     for skill_id, skill in registry.items():
-        if atomic_only and skill_id not in ATOMIC_SKILLS:
+        if atomic_only and skill_id not in atomic_skills:
             continue
         compact[skill_id] = {
+            "description": skill.get("description", ""),
             "parameters": skill.get("parameters") or {},
         }
     return compact
 
 
-def build_prompt(user_command, world_state, registry, validation_error=None, previous_output=None):
+def recipe_instructions(policy):
+    recipes = policy.get("recipes") or {}
+    instructions = []
+    for recipe_id, recipe in recipes.items():
+        if isinstance(recipe, str):
+            instructions.append(recipe)
+        else:
+            instruction = recipe.get("instruction")
+            if instruction:
+                instructions.append(instruction)
+            elif recipe.get("description"):
+                instructions.append(f"{recipe_id}: {recipe['description']}")
+    return instructions
+
+
+def build_prompt(user_command, world_state, registry, policy, validation_error=None, previous_output=None):
+    atomic_skills = set(policy.get("atomic_skills") or [])
+    rules = list(policy.get("rules") or [])
+    rules.extend(recipe_instructions(policy))
     prompt = {
-        "role": "robot_task_planner",
-        "rules": [
-            "Return one JSON object and nothing else.",
-            "Use only skills listed in skill_registry.",
-            "Prefer atomic skills. Do not use composite/debug skills unless explicitly allowed.",
-            "Do not invent object names, region names, ROS topics, or skill names.",
-            "Spatial relation values are strings. Use \"on\", not bare YAML-style on.",
-            "Use consecutive integer step numbers starting at 1.",
-            "For pick: observe_scene, open_gripper, move_above_object, move_to_object, close_gripper, attach_object, lift.",
-            "For place in region: move_to_region, detach_object, open_gripper, verify_region.",
-            "For stack A on B: observe_scene, open_gripper, move_above_object(A, z_offset=0.16), move_to_object(A, z_offset=0.04), close_gripper(position=0.3), attach_object(A), lift(height=0.15), move_above_object(B, z_offset=0.205), move_to_object(B, z_offset=0.105), detach_object, open_gripper, verify_relation(on, A, B).",
-        ],
-        "default_parameters": {
-            "pick_approach_z_offset": 0.16,
-            "pick_contact_z_offset": 0.04,
-            "grasp_close_position": 0.3,
-            "lift_height": 0.15,
-            "stack_approach_z_offset": 0.205,
-            "stack_place_z_offset": 0.105,
-            "move_to_region_tcp_z": 0.09,
-        },
-        "available_atomic_skills": sorted(ATOMIC_SKILLS),
-        "skill_registry": compact_skill_registry(registry),
+        "role": policy.get("role", "robot_task_planner"),
+        "rules": rules,
+        "default_parameters": policy.get("default_parameters") or {},
+        "available_atomic_skills": sorted(atomic_skills),
+        "skill_registry": compact_skill_registry(registry, atomic_skills),
         "world_state": world_state,
         "user_command": user_command,
         "output_schema": {
@@ -300,6 +373,10 @@ def parse_args():
     parser.add_argument("--openai-api-base", default="https://api.openai.com/v1", help="OpenAI API base URL.")
     parser.add_argument("--ollama-url", default="http://localhost:11434", help="Ollama base URL.")
     parser.add_argument("--world-state-file", help="JSON world state file. Defaults to symbolic scene.")
+    parser.add_argument(
+        "--prompt-policy-file",
+        help="YAML prompt policy file. Defaults to skill_library/config/planning/prompt_policy.yaml.",
+    )
     parser.add_argument("--output", help="Write generated plan JSON to this path.")
     parser.add_argument("--dry-run", action="store_true", help="Print prompt only; do not call the LLM provider.")
     parser.add_argument("--allow-composite", action="store_true", help="Allow composite/debug skills in output.")
@@ -312,8 +389,10 @@ def parse_args():
 def main():
     args = parse_args()
     registry = load_skill_registry()
+    policy = load_prompt_policy(args.prompt_policy_file)
+    atomic_skills = set(policy.get("atomic_skills") or [])
     world_state = load_world_state(args.world_state_file)
-    prompt = build_prompt(args.command, world_state, registry)
+    prompt = build_prompt(args.command, world_state, registry, policy)
 
     if args.dry_run:
         print(prompt)
@@ -323,7 +402,7 @@ def main():
     validation_error = None
     for attempt in range(args.repair_attempts + 1):
         if attempt > 0:
-            prompt = build_prompt(args.command, world_state, registry, validation_error, previous_output)
+            prompt = build_prompt(args.command, world_state, registry, policy, validation_error, previous_output)
 
         try:
             if args.provider == "ollama":
@@ -348,7 +427,7 @@ def main():
         previous_output = response_text
         try:
             plan = parse_json_object(response_text)
-            validate_plan(plan, registry, require_atomic=not args.allow_composite)
+            validate_plan(plan, registry, atomic_skills, require_atomic=not args.allow_composite)
             if args.output:
                 output_path = make_output_path(args.output)
                 with output_path.open("w", encoding="utf-8") as stream:
